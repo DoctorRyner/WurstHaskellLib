@@ -1,0 +1,333 @@
+package Haskell
+
+import LinkedList
+import Lodash
+import ClosureTimers
+
+// Lambda
+public interface Action
+    function _ ()
+
+public interface Lambda<T>
+    function _ () returns T
+
+public interface Lambda1<A, B>
+    function _ (A a) returns B
+
+public interface Lambda2<A, B, C>
+    function _ (A a, B b) returns C
+
+public interface Lambda3<A, B, C, D>
+    function _ (A a, B b, C c) returns D
+
+public interface Lambda4<A, B, C, D, E>
+    function _ (A a, B b, C c, D d) returns E
+
+public interface Lambda5<A, B, C, D, E, F>
+    function _ (A a, B b, C c, D d, E e) returns F
+
+public interface Lambda6<A, B, C, D, E, F, G>
+    function _ (A a, B b, C c, D d, E e, F f) returns G
+
+// List
+function map<A, B> (Lambda1<A, B> f, LinkedList<A> list) returns LinkedList<B>
+    return list.map (x -> f._(x))
+
+public function filter<T> (LinkedListPredicate<T> f, LinkedList<T> xs) returns LinkedList<T>
+    return xs.filter (f)
+
+// IO
+public enum Void
+    Void
+
+public let void = Void.Void
+
+public function unsafeDelay<A> (real time, IO<A> io) returns IO<Void>
+    return () -> begin
+        doAfter(time, () -> runIO (io))
+        return void
+    end
+
+public function delay<A> (real time, IO<A> io) returns IO<Void>
+    return bind1 (
+          pure (void)
+        , _ -> unsafeDelay (time, io)
+        )
+
+public function do (vararg IO<Void> actions) returns IO<Void>
+    var list = new LinkedList<IO<Void>> ()
+    for action in actions
+        list.add (action)
+    return () -> begin
+        list.forEach(action -> action.unsafePerfomIO ())
+        return void
+    end
+
+public function do<A> (LinkedList<IO<Void>> actions, IO<A> returnValue) returns IO<A>
+    return () -> begin
+        actions.forEach (action -> action.unsafePerfomIO ())
+        return returnValue.unsafePerfomIO ()
+    end
+
+public function runIO<A> (IO<A> io)
+    io.unsafePerfomIO ()
+
+public class IORef<A>
+    private A value
+
+    function read () returns IO<A>
+        return pure (value)
+
+    function write (A newValue) returns IO<Void>
+        return () -> begin
+            value = newValue
+            return void
+        end
+
+    construct (A initialValue)
+        value = initialValue
+
+public function newIORef<A> (A value) returns IORef<A>
+    return new IORef (value)
+
+public function readIORef<A> (IORef<A> ref) returns IO<A>
+    return ref.read ()
+
+public function writeIORef<A> (IORef<A> ref, A newValue) returns IO<Void>
+    return ref.write (newValue)
+
+public function pure<T> (T val) returns IO<T>
+    return () -> val
+
+public function unsafePerfomIO<T> (IO<T> io) returns T
+    return io.unsafePerfomIO ()
+
+public interface IO<T>
+    function unsafePerfomIO () returns T
+
+public function cata<T> (IO<Void> err, Lambda1<T, IO<Void>> ok, Maybe<T> mb) returns IO<Void>
+    return isJust (mb)
+        ? ok._(mb.fromJust_NEVER_USE_IT_I_WILL_FIND_YOU ())
+        : err
+
+public function bind1<A, B> (IO<A> io, Lambda1<A, IO<B>> f) returns IO<B>
+    return () -> begin
+        let res = io.unsafePerfomIO ()
+        return f._(res).unsafePerfomIO ()
+    end
+
+public function bind2<A, B, C> (
+      IO<A> io1
+    , IO<B> io2
+    , Lambda2<A, B, IO<C>> f
+    ) returns IO<C>
+    return () -> begin
+        let res1 = io1.unsafePerfomIO ()
+        let res2 = io2.unsafePerfomIO ()
+        return f._(res1, res2).unsafePerfomIO ()
+    end
+
+public function bind3<A, B, C, D> (
+      IO<A> io1
+    , IO<B> io2
+    , IO<C> io3
+    , Lambda3<A, B, C, IO<D>> f
+    ) returns IO<D>
+    return () -> begin
+        let res1 = io1.unsafePerfomIO ()
+        let res2 = io2.unsafePerfomIO ()
+        let res3 = io3.unsafePerfomIO ()
+        return f._(res1, res2, res3).unsafePerfomIO ()
+    end
+
+public function bind4<A, B, C, D, E> (
+      IO<A> io1
+    , IO<B> io2
+    , IO<C> io3
+    , IO<D> io4
+    , Lambda4<A, B, C, D, IO<E>> f
+    ) returns IO<E>
+    return () -> begin
+        let res1 = io1.unsafePerfomIO ()
+        let res2 = io2.unsafePerfomIO ()
+        let res3 = io3.unsafePerfomIO ()
+        let res4 = io4.unsafePerfomIO ()
+        return f._(res1, res2, res3, res4).unsafePerfomIO ()
+    end
+
+// printing
+public function putStrLn (string str) returns IO<Void>
+    return () -> begin
+        print (str)
+        return void
+    end
+
+public function getCaster () returns IO<Maybe<unit>>
+    return () -> maybe (GetSpellAbilityUnit ())
+
+public function getTarget () returns IO<Maybe<unit>>
+    return () -> maybe (GetSpellTargetUnit ())
+
+public function putStrLnIO (string str) returns IO<string>
+    return () -> begin
+        print (str)
+        return str
+    end
+
+// working with numbers
+public function succ (int x) returns int
+    return x + 1
+
+public function succ (real x) returns real
+    return x + 1
+
+// Maybe
+public class Maybe<T>
+    private constant T val
+
+    function isJust_NEVER_USE_IT_I_WILL_FIND_YOU () returns bool
+        return val != null
+
+    function fromJust_NEVER_USE_IT_I_WILL_FIND_YOU () returns T
+        return val
+
+    construct ()
+
+    construct (T val_)
+        val = val_
+
+public function isJust<T> (Maybe<T> mb) returns bool
+    return mb.isJust_NEVER_USE_IT_I_WILL_FIND_YOU ()
+
+public function withDefault<T> (T defValue, Maybe<T> mb) returns T
+    return isJust (mb) ? mb.fromJust_NEVER_USE_IT_I_WILL_FIND_YOU () : defValue
+
+public function withMaybe<A, B> (B defValue, Lambda1<A, B> f, Maybe<A> mb) returns B
+    return isJust (mb)
+        ? f._ (mb.fromJust_NEVER_USE_IT_I_WILL_FIND_YOU ())
+        : defValue
+
+public function maybe<T> (T val) returns Maybe<T>
+    return new Maybe (val)
+
+// Tuple
+public class Tuple<A, B>
+    constant A a
+    constant B b
+
+    construct (A a_, B b_)
+        a = a_
+        b = b_
+
+public function tuple_<A, B> (A a, B b) returns Tuple<A, B>
+    return new Tuple (a, b)
+
+// Either
+public class Either<LEFT, RIGHT>
+    constant LEFT  left
+    constant RIGHT right
+
+    function fromLeft_NEVER_USE_THAT_I_WILL_FIND_YOU () returns LEFT
+        return left
+
+    function isLeft_NEVER_USE_THAT_I_WILL_FIND_YOU () returns bool
+        return left != null
+
+    function fromRight_NEVER_USE_THAT_I_WILL_FIND_YOU () returns RIGHT
+        return right
+
+    function isRight_NEVER_USE_THAT_I_WILL_FIND_YOU () returns bool
+        return right != null
+
+    construct (LEFT left_, Void _)
+        left = left_
+
+    construct (RIGHT right_)
+        right = right_
+
+public function isLeft<LEFT, RIGHT> (Either<LEFT, RIGHT> e) returns bool
+    return e.isLeft_NEVER_USE_THAT_I_WILL_FIND_YOU ()
+
+public function isRight<LEFT, RIGHT> (Either<LEFT, RIGHT> e) returns bool
+    return e.isRight_NEVER_USE_THAT_I_WILL_FIND_YOU ()
+
+public function cataEither<LEFT, RIGHT> (
+      Lambda1<LEFT , IO<Void>> left
+    , Lambda1<RIGHT, IO<Void>> right
+    , Either<LEFT, RIGHT> e
+    ) returns IO<Void>
+    return isLeft (e)
+        ? left ._(e.fromLeft_NEVER_USE_THAT_I_WILL_FIND_YOU())
+        : right._(e.fromRight_NEVER_USE_THAT_I_WILL_FIND_YOU())
+
+public function caseOfEither<LEFT, RIGHT, T> (
+      Either <LEFT , RIGHT> e
+    , Lambda1<LEFT , T    > left
+    , Lambda1<RIGHT, T    > right
+    ) returns T
+    return isLeft (e)
+        ? left ._(e.fromLeft_NEVER_USE_THAT_I_WILL_FIND_YOU ())
+        : right._(e.fromRight_NEVER_USE_THAT_I_WILL_FIND_YOU())
+
+public function withDefaultLeft<LEFT, RIGHT> (LEFT left, Either<LEFT, RIGHT> e) returns LEFT
+    return isLeft (e)
+        ? e.fromLeft_NEVER_USE_THAT_I_WILL_FIND_YOU ()
+        : left
+
+public function withDefaultLeft<LEFT, RIGHT> (RIGHT right, Either<LEFT, RIGHT> e) returns RIGHT
+    return isRight (e)
+        ? e.fromRight_NEVER_USE_THAT_I_WILL_FIND_YOU ()
+        : right
+
+// conditionals
+public function caseOf<VAL, RESULT> (
+      VAL x
+    , LinkedList<Tuple<VAL, RESULT>> xs
+    , RESULT def
+    ) returns RESULT
+    return withDefault(def, maybe (find (xs, someTuple -> someTuple.a == x).b))
+
+public function ifIO<T> (bool isTrue, IO<T> trueVal, IO<T> falseVal) returns IO<T>
+    return pure (isTrue ? trueVal.unsafePerfomIO() : falseVal.unsafePerfomIO())
+
+public function ifAction (bool isTrue, Action trueVal, Action falseVal) returns IO<Void>
+    if isTrue
+        trueVal._()
+    else
+        falseVal._()
+
+    return pure (void)
+
+public function if_<T> (bool isTrue, T trueVal, T falseVal) returns T
+    return isTrue ? trueVal : falseVal
+
+// Player
+public function p (int index) returns player
+    return playerFromIndex (index)
+
+// Camera
+public class Camera
+    static function pos (vec2 pos) returns IO<Void>
+        return () -> begin
+            SetCameraPosition (pos.x, pos.y)
+            return void
+        end
+
+    static function pos (unit u) returns IO<Void>
+        return () -> begin
+            let pos = u.getPos ()
+            SetCameraPosition (pos.x, pos.y)
+            return void
+        end
+
+    static function height (real x) returns IO<Void>
+        return () -> begin
+            SetCameraField (CAMERA_FIELD_FIELD_OF_VIEW, x, 0)
+            return void
+        end
+
+    static function heightTimed (real time, real x) returns IO<Void>
+        return () -> begin
+            SetCameraField (CAMERA_FIELD_FIELD_OF_VIEW, x, time)
+            return void
+        end
